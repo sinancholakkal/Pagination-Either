@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:bloc/bloc.dart';
+import 'package:dartz/dartz.dart';
 import 'package:meta/meta.dart';
 import 'package:pagination_with_either/api_service/api_service.dart';
 import 'package:pagination_with_either/api_service/model.dart';
@@ -14,16 +15,23 @@ class DatasBloc extends Bloc<DatasEvent, DatasState> {
     int pageCount = 1;
     on<DatasEvent>((event, emit) async {
       log("Bloc fetch event called");
-      if(pageCount!=1){
-        emit(MoreDataLoading(isLoading: true,datas: models));
-      }else{
+      if (pageCount != 1) {
+        emit(MoreDataLoading(isLoading: true, datas: models));
+      } else {
         emit(InitialLoading());
       }
       try {
-        final newData = await ApiService.fetchData(pageCount);
-        pageCount++;
-        models.addAll(newData);
-        emit(LoadedDataState(datas: models,isLoading: false));
+        final Either<String, List<Model>> newDataOption =
+            await ApiService.fetchData(pageCount);
+
+        newDataOption.fold((failure) {
+          log(failure);
+        }, (success) {
+          log("success either");
+          pageCount++;
+          models.addAll(success);
+          emit(LoadedDataState(datas: models, isLoading: false));
+        });
       } catch (e) {
         log("Somthing issue while loading data $e");
       }
